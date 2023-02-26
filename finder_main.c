@@ -5,12 +5,13 @@
 #include <string.h>
 
 #define POPULATION_COUNT 500
-#define GENE_LENGHT 18
+#define GENE_MAX_LENGHT 30
 #define MUTATION 1 /*percent*/
 
 typedef struct {
 	float fitness;
-	char gene[GENE_LENGHT]; /*genotype*/
+	char gene[GENE_MAX_LENGHT]; /*genotype*/
+	size_t len;
 } Agent_t;
 
 Agent_t g_populations[POPULATION_COUNT] = {0};
@@ -24,18 +25,23 @@ int random_int(int low_num, int hi_num) {
 }
 
 char random_char() {
-	return (char) random_int(97 , 123);	
+	return (char) random_int(32 , 127);	
 }
 
-void init_population() {
-	Agent_t *agent;
+void init_population(int long target_len) {
 
+	Agent_t *agent;
 	srand(time(NULL));
+	if (GENE_MAX_LENGHT < target_len) {
+		fprintf(stderr, "Too big target\n");
+		exit(1);
+	}
 	
 	for (int i =0; i < POPULATION_COUNT; i++) {
 		agent = &g_populations[i];
+		agent->len = target_len;
 
-		for (int i = 0;i <= GENE_LENGHT; i++) {
+		for (int i = 0;i < agent->len ; i++) {
 			agent->gene[i] = random_char();	
 		}
 		agent = NULL;
@@ -43,15 +49,15 @@ void init_population() {
 }
 
 //Todo
-float calculate_fitness(Agent_t *agent, char *target, int *match){
+float calculate_fitness(Agent_t *agent, char *target, long int target_len, int *match){
 	
 	float fitness = 0.0;
-	for (int i = 0; i < GENE_LENGHT ; i++ ) {
+	for (int i = 0; i < agent->len ; i++ ) {
 		if (agent->gene[i] == target[i])
 			fitness++;
 	}
 
-	agent->fitness = fitness / GENE_LENGHT;
+	agent->fitness = fitness / target_len;
 
 	if (agent->fitness == 1)
 		*match = 1;
@@ -66,18 +72,18 @@ typedef struct {
 
 
 
-void create_crossover(char *gene_1, char * gene_2, char *child_gene){
+void create_crossover(char *gene_1, char * gene_2, char *child_gene, long int len){
 	
-	int mid = random_int(0 , GENE_LENGHT);
+	int mid = random_int(0 ,len);
 	int i = 0;
 	for(; i<mid ;i++)
 	      child_gene[i] = gene_1[i];
-	for(i = mid; i < GENE_LENGHT; i++)
+	for(i = mid; i < len; i++)
 	      child_gene[i] = gene_2[i];
 }
 
-void add_mutation(char *gene){
-	for (int i = 0; i < GENE_LENGHT ; i++) {
+void add_mutation(char *gene, long int len){
+	for (int i = 0; i < len; i++) {
 		if (random_int(0, 1000) <= 1)
 			gene[i] = random_char();
 	}
@@ -126,12 +132,13 @@ void select_reproducers() {
 
 		}
 
-		create_crossover(parent_1->gene, parent_2->gene, agent->gene);
+		create_crossover(parent_1->gene, parent_2->gene, agent->gene, agent->len);
 		agent->fitness = 0;
-		add_mutation(agent->gene);
+		add_mutation(agent->gene, agent->len);
 	}
 
 	free(tmp_agents);
+	tmp_agents = NULL;
 }
 
 //TODO
@@ -147,7 +154,7 @@ void print_population(char *target) {
 		printf("1. ");
 		printf("fitness:%f ", agent->fitness);
 		printf("dna :");
-		for (int i = 0; i< GENE_LENGHT; i ++) {
+		for (int i = 0; i< agent->len; i ++) {
 			printf("%c", agent->gene[i]);
 		}
 		printf("\n");
@@ -159,17 +166,31 @@ int main(int argc, char **argv) {
 	(void) argc;
 	(void) argv;
 
-	char *target = "helloworldhowareuu";
+	char *target;
+	long int target_len = 0;
 	int match = 0;
 	int generations = 1;
 	float avg_score = 0;
 
-	init_population();
+	if (argc < 2) {
+		fprintf(stderr, "Target string not provided!");
+		exit(1);
+	}
+
+	if (strlen(argv[1]) > GENE_MAX_LENGHT) {
+		fprintf(stderr, "Target string too big!");
+		exit(1);
+	}
+
+	target = argv[1];
+	target_len = strlen(target);
+
+	init_population(target_len);
 
 	while(!match) {
 		avg_score = 0;
 		for (int i=0; i < POPULATION_COUNT ; i++) {
-			avg_score += calculate_fitness(&g_populations[i], target, &match);
+			avg_score += calculate_fitness(&g_populations[i], target, target_len, &match);
 		}
 		avg_score /= POPULATION_COUNT;
 		select_reproducers();
