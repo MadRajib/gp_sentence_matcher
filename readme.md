@@ -7,7 +7,7 @@ Use Genetic Programming algo to find a target sentence.
 git clone https://github.com/MadRajib/gp_sentence_matcher.git
 cd gp_sentence_matcher
 make
-``
+```
 ### Run
 ```bash
 $ ./word_finder "Madrajib lab"
